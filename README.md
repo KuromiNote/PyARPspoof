@@ -38,7 +38,7 @@ Usage: pyarpspoof to <1p ipv4 address> <2p ipv4 address> is [\<mac address\>/\<i
 
 \<me\>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;指本地主机MAC地址，通常作为中间人攻击，为关键词
 
-\<fakemac\>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;指随机的虚假MAC地址，通常用于断网攻击，为关键词
+\<fakemac\>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;指随机的虚假MAC地址，通常用于断网攻击，为关键词
 
 了解ARP协议:
 
