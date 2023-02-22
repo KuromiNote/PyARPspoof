@@ -28,9 +28,9 @@ Usage: pyarpspoof to <1p ipv4 address> <2p ipv4 address> is [\<mac address\>/\<i
 
 使目标的网络通讯变得不正常，甚至可以作为中间人监听目标与另一个目标的数据包流量。
 
-\<1p ipv4 address\>&emsp;&emsp;指投毒目标
+\<1p ipv4 address\>&emsp;&emsp;&nbsp;指投毒目标
 
-\<2p ipv4 address\>&emsp;&emsp;指欺骗内容的IP地址
+\<2p ipv4 address\>&emsp;&emsp;&nbsp;指欺骗内容的IP地址
 
 \<mac address\>&emsp;&emsp;&emsp;&emsp;指欺骗内容的MAC地址
 
