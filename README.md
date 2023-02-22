@@ -44,7 +44,7 @@ Usage: pyarpspoof to <1p ipv4 address> <2p ipv4 address> is [\<mac address\>/\<i
 
     ARP协议是根据IP地址获取物理地址（MAC地址）的TCP/IP协议。
     
-    主机在向局域网内广播携带IP地址的ARP请求，然后更新ARP缓存，确保主机内主机IP地址和MAC地址的映射
+    主机在向局域网内广播携带IP地址的ARP请求，然后更新ARP路由表，确保主机内主机IP地址和MAC地址的映射
     
 了解ARP投毒(欺骗)攻击:
 
