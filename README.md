@@ -34,7 +34,7 @@ Usage: pyarpspoof to <1p ipv4 address> <2p ipv4 address> is [\<mac address\>/\<i
 
 \<mac address\>&emsp;&emsp;&emsp;&emsp;指欺骗内容的MAC地址
 
-\<ipv4 address\>&emsp;&emsp;&emsp;&emsp;&emsp;指第三者的IP地址，会自动转化为MAC地址
+\<ipv4 address\>&emsp;&emsp;&emsp;&emsp;指第三者的IP地址，会自动转化为MAC地址
 
 \<me\>&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;指本地主机MAC地址，通常作为中间人攻击，为关键词
 
