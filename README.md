@@ -22,7 +22,7 @@ PyARPspoof项目可以自定义地发送ARP数据包给一定网络范围的目�
          ░ ░                                                                             
 ```
 
-Usage: pyarpspoof to <1p ipv4 address> <2p ipv4 address> is [<mac address>/<ipv4 address>/me/fakemac]
+Usage: pyarpspoof to <1p ipv4 address> <2p ipv4 address> is [\<mac address\>/\<ipv4 address\>/me/fakemac]
 
 这是一个ARP投毒(欺骗)攻击程序，它可以使目标的ARP缓存表变成你设定的内容。
 使目标的网络通讯变得不正常，甚至可以作为中间人监听目标与另一个目标的数据包流量。
